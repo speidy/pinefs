@@ -306,8 +306,7 @@ class NfsSrv (rfc1094.NFS_PROGRAM_2, HostAccessControl):
         return stat
 
 
-if __name__ == '__main__':
-
+def main():
     server_class = rpc.UDPServer
     optlist, args = getopt.getopt(sys.argv[1:], 'f:t')
     fs_dict = {'py': (pyfs, 1),
@@ -347,3 +346,7 @@ if __name__ == '__main__':
         nfs_rpc.stop()
         mnt_rpc.unregister()
         nfs_rpc.unregister()
+
+
+if __name__ == '__main__':
+    main()
