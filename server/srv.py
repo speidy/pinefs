@@ -86,7 +86,7 @@ class MntSrv (rfc1094.MOUNTPROG_1, HostAccessControl):
         self.fs = fs
         rfc1094.MOUNTPROG_1.__init__(self)
 
-    def MOUNTPROC_NULL(self):
+    def MOUNTPROC_NULL(self, param):
         return None
 
     def MOUNTPROC_MNT(self, dirpath):
@@ -109,7 +109,7 @@ class NfsSrv (rfc1094.NFS_PROGRAM_2, HostAccessControl):
         self.fs = fs
         rfc1094.NFS_PROGRAM_2.__init__(self)
 
-    def NFSPROC_NULL(self):
+    def NFSPROC_NULL(self, param):
         return None
 
     def NFSPROC_GETATTR(self, fh):
