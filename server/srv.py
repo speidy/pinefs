@@ -105,14 +105,14 @@ class NfsSrv (rfc1094.NFS_PROGRAM_2, HostAccessControl):
     def NFSPROC_NULL (self):
         return None
     def NFSPROC_GETATTR (self, fh):
-        as = rfc1094.attrstat ()
+        _as = rfc1094.attrstat ()
         fil = self.fs.get_fil (fh)
         if fil == None:
-            as.status = rfc1094.NFSERR_STALE
+            _as.status = rfc1094.NFSERR_STALE
         else:
-            as.status = rfc1094.NFS_OK
-            as._data = fil
-        return as
+            _as.status = rfc1094.NFS_OK
+            _as._data = fil
+        return _as
     
     def NFSPROC_SETATTR (self, sattrargs):
         rv = rfc1094.attrstat ()
