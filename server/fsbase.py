@@ -4,7 +4,7 @@
 # http://www.pobox.com/~asl2/software/Pinefs
 # and is licensed under the X Consortium license:
 # Copyright (c) 2003, Aaron S. Lav, asl2@pobox.com
-# All rights reserved. 
+# All rights reserved.
 
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the
@@ -14,7 +14,7 @@
 # to whom the Software is furnished to do so, provided that the above
 # copyright notice(s) and this permission notice appear in all copies of
 # the Software and that both the above copyright notice(s) and this
-# permission notice appear in supporting documentation. 
+# permission notice appear in supporting documentation.
 
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
 # OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
@@ -24,12 +24,12 @@
 # INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING
 # FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
 # NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
-# WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. 
+# WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 # Except as contained in this notice, the name of a copyright holder
 # shall not be used in advertising or otherwise to promote the sale, use
 # or other dealings in this Software without prior written authorization
-# of the copyright holder. 
+# of the copyright holder.
 
 
 """fsbase implements some utility functions and classes for filesystems."""
@@ -88,7 +88,7 @@ def mk_now ():
 
 # No symbolic names defined in rfc1094 for these
 MODE_DIR = 0040000
-MODE_CSPECIAL =       0020000 
+MODE_CSPECIAL =       0020000
 MODE_BSPECIAL =  0060000
 MODE_REG =    0100000
 MODE_SYMLINK =      0120000

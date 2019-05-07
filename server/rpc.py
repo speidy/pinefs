@@ -684,7 +684,7 @@ class Server:
 			exctype, value = sys.exc_info() [:2]
 			print "Error %s %s registering prog %d vers %d" % (
 				str (exctype), str (value), prog, vers)
-			
+
 
 	def unregister(self):
 		try:
@@ -739,7 +739,7 @@ class Server:
 			return self.packer.get_buf()
 		vers = self.unpacker.unpack_uint()
 		server = vers_dict.get (vers, None)
-		
+
 		if server == None:
 			supported_versions = vers_dict.keys ()
 			self.packer.pack_uint(PROG_MISMATCH)
@@ -783,7 +783,7 @@ class Server:
 			self.packer.pack_auth((AUTH_NULL, make_auth_null()))
 			self.packer.pack_uint(SYSTEM_ERR)
 
-			
+
 		return self.packer.get_buf()
 
 	def turn_around(self):
@@ -879,7 +879,7 @@ class UDPServer(Server):
 	def stop (self):
 		self.quitting = 1
 		self.sock.sendto ("", self.sock.getsockname ())
-		
+
 
 	def loop(self):
 		while not self.quitting:

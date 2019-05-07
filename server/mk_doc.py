@@ -27,4 +27,4 @@ Pinefs - %s
 </body>
 </html>""" % (nm, nm, docstr))
 
-    
+

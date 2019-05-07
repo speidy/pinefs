@@ -4,7 +4,7 @@
 # http://www.pobox.com/~asl2/software/Pinefs
 # and is licensed under the X Consortium license:
 # Copyright (c) 2003, Aaron S. Lav, asl2@pobox.com
-# All rights reserved. 
+# All rights reserved.
 
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the
@@ -14,7 +14,7 @@
 # to whom the Software is furnished to do so, provided that the above
 # copyright notice(s) and this permission notice appear in all copies of
 # the Software and that both the above copyright notice(s) and this
-# permission notice appear in supporting documentation. 
+# permission notice appear in supporting documentation.
 
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
 # OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
@@ -24,13 +24,16 @@
 # INDIRECT OR CONSEQUENTIAL DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING
 # FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
 # NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
-# WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. 
+# WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 # Except as contained in this notice, the name of a copyright holder
 # shall not be used in advertising or otherwise to promote the sale, use
 # or other dealings in this Software without prior written authorization
 # of the copyright holder.
 
+import sys
+import yacc
+import lex
 """Parser for ONC RPC IDL.  The grammar is taken from RFC1832, sections
 5, and RFC1831, section 11.2.
 
@@ -107,10 +110,12 @@ import time
 class LexError (Exception):
     pass
 
+
 class ParseError(Exception):
     pass
 
-tokens = ('LPAREN', 'RPAREN','LBRACK', 'RBRACK', 'LANGLE', 'RANGLE',
+
+tokens = ('LPAREN', 'RPAREN', 'LBRACK', 'RBRACK', 'LANGLE', 'RANGLE',
           'STAR', 'COMMA', 'COLON', 'VOID', 'UNSIGNED', 'TYPE',
           'ENUM', 'LCBRACK', 'RCBRACK', 'EQ', 'STRUCT', 'UNION',
           'SWITCH', 'CASE', 'DEFAULT', 'CONST', 'SEMICOLON', 'IDENT',
@@ -122,17 +127,17 @@ t_LBRACK = r'\['
 t_RBRACK = r'\]'
 t_LANGLE = r'<'
 t_RANGLE = r'>'
-t_STAR   = r'\*'
-t_COMMA  = r','
-t_COLON  = r':'
+t_STAR = r'\*'
+t_COMMA = r','
+t_COLON = r':'
 t_LCBRACK = r'{'
 t_RCBRACK = r'}'
 t_EQ = r'='
 t_SEMICOLON = r';'
 
 reserved_tuple = (
-# RFC 1832, XDR
-    'void', 
+    # RFC 1832, XDR
+    'void',
     'unsigned',
     'opaque',
     'string',
@@ -144,7 +149,7 @@ reserved_tuple = (
     'default',
     'const',
     'typedef',
-# RFC 1831, RPC
+    # RFC 1831, RPC
     'program',
     'version')
 
@@ -158,482 +163,583 @@ py_reserved_words = ['def', 'print', 'del', 'pass', 'break', 'continue',
 
 reserved_dict = {}
 for r in reserved_tuple:
-    reserved_dict[r] = r.upper ()
+    reserved_dict[r] = r.upper()
 for t in types:
     reserved_dict[t] = 'TYPE'
+
 
 def t_CONSTVAL(t):
     r"(0x[0-9A-Fa-f]+)|(-?\d+)"
     return t
 
-def t_COMMENT (t):
+
+def t_COMMENT(t):
     r"/\*(.|\n)*?\*/"
     t.lineno += t.value.count('\n')
     return None
+
 
 def t_NEWLINE(t):
     r'\n+'
     t.lineno += t.value.count("\n")
 
+
 t_ignore = " \t"
 
-def needs_escaping (val):
+
+def needs_escaping(val):
     """Check whether this identifier is a valid IDL but not Python identifier,
     or whether it would otherwise be an escaped IDL identifier.  (Escaping
     is done by appending a '_', if the identifier, once stripped of all
     trailing underscores, is a Python keyword."""
-    while val [-1] == '_':
-        val = val [:-1]
+    while val[-1] == '_':
+        val = val[:-1]
     return val in py_reserved_words
 
-def t_IDENT (t):
+
+def t_IDENT(t):
     r"[a-zA-Z]([a-zA-Z]|_|[0-9])*"
-    t.type = reserved_dict.get (t.value, 'IDENT')
-    if needs_escaping (t.value):
+    t.type = reserved_dict.get(t.value, 'IDENT')
+    if needs_escaping(t.value):
         t.value += '_'
     return t
 
-def t_error (t):
-    raise LexError (t)
 
-import lex
+def t_error(t):
+    raise LexError(t)
 
-lexer = lex.lex ()
+
+lexer = lex.lex()
+
 
 class Ctx:
-    def __init__ (self):
+    def __init__(self):
         self.indent = 0
-        self.deferred_list = [] # used for deferring nested Enum definitions
-    def defer (self, val):
-        self.deferred_list.append (val)
-    def finish (self):
-        return "\n".join (self.deferred_list)
-        
+        self.deferred_list = []  # used for deferring nested Enum definitions
+
+    def defer(self, val):
+        self.deferred_list.append(val)
+
+    def finish(self):
+        return "\n".join(self.deferred_list)
+
+
 class Node:
-    def __init__ (self, val=None, children=None, **kw):
+    def __init__(self, val=None, children=None, **kw):
         self.val = val
         self.children = children
-        self.__dict__.update (kw)
-        
-    def set_ident (self, ident):
+        self.__dict__.update(kw)
+
+    def set_ident(self, ident):
         """Sets name (currently only used to get struct/union tags into
         the right place)"""
         pass
-    
-    def to_str (self, ctx):
-        return '# Unimplemented ' + self.__class__.__name__ + " " + str (self.__dict__)
+
+    def to_str(self, ctx):
+        return '# Unimplemented ' + self.__class__.__name__ + " " + str(self.__dict__)
+
 
 class NodeList(Node):
     sep = '\n'
-    def __init__ (self, node, node_list = None):
+
+    def __init__(self, node, node_list=None):
         if node_list == None:
-            Node.__init__ (self,  children = [node])
+            Node.__init__(self,  children=[node])
         else:
-            Node.__init__ (self,  children = [node] +
-                           node_list.children)
-    def to_str (self, ctx):
-        l = [c.to_str (ctx) for c in self.children]
-        return self.sep.join (l)
-            
+            Node.__init__(self,  children=[node] +
+                          node_list.children)
+
+    def to_str(self, ctx):
+        l = [c.to_str(ctx) for c in self.children]
+        return self.sep.join(l)
+
+
 class NodeListComma (NodeList):
     sep = ', '
-            
-class Specification(NodeList): pass
+
+
+class Specification(NodeList):
+    pass
+
 
 class SimpleType (Node):
-    def __init__ (self, typ, ident): # ident can be None
-        typ.set_ident (ident)
-        Node.__init__ (self,  typ=typ, ident = ident)
-    def to_str (self, ctx):
-        return self.typ.to_str (ctx)
+    def __init__(self, typ, ident):  # ident can be None
+        typ.set_ident(ident)
+        Node.__init__(self,  typ=typ, ident=ident)
+
+    def to_str(self, ctx):
+        return self.typ.to_str(ctx)
 
 
 class ArrType (Node):
     fixed = 0
     var = 1
-    def __init__ (self, typ, ident, var_fixed, maxind = None):
-        Node.__init__ (self,  typ=typ, ident=ident,
-                       var_fixed = var_fixed, maxind = maxind)
-    def to_str (self, ctx):
-        var_fixed = ['rpchelp.fixed', 'rpchelp.var'] [self.var_fixed]
+
+    def __init__(self, typ, ident, var_fixed, maxind=None):
+        Node.__init__(self,  typ=typ, ident=ident,
+                      var_fixed=var_fixed, maxind=maxind)
+
+    def to_str(self, ctx):
+        var_fixed = ['rpchelp.fixed', 'rpchelp.var'][self.var_fixed]
         if self.typ in ['string', 'opaque']:
             return 'rpchelp.%s (%s, %s)' % (self.typ, var_fixed, self.maxind)
         return 'rpchelp.arr (%s, %s, %s)' % (
-            self.typ.to_str (ctx), var_fixed, self.maxind)
+            self.typ.to_str(ctx), var_fixed, self.maxind)
 
 
 class OptData (Node):
-    def __init__ (self, type_spec, ident):
-        Node.__init__ (self,  type_spec=type_spec,
-                       ident = ident)
-    def to_str (self, ctx):
-        return 'rpchelp.opt_data (lambda : %s)' % (self.type_spec.to_str (ctx))
+    def __init__(self, type_spec, ident):
+        Node.__init__(self,  type_spec=type_spec,
+                      ident=ident)
+
+    def to_str(self, ctx):
+        return 'rpchelp.opt_data (lambda : %s)' % (self.type_spec.to_str(ctx))
+
 
 class TypeSpec (Node):
-    unsignable = {'int' : 'uint', 'hyper' : 'uhyper'}
-    def __init__ (self, val, unsigned, base, compound = 0):
+    unsignable = {'int': 'uint', 'hyper': 'uhyper'}
+
+    def __init__(self, val, unsigned, base, compound=0):
         if unsigned:
-            v = self.unsignable.get (val, None)
+            v = self.unsignable.get(val, None)
             if v == None:
-                raise ParseError (val + ' cannot be combined w/ unsigned ')
+                raise ParseError(val + ' cannot be combined w/ unsigned ')
             val = v
-        Node.__init__ (self,  val=val, base = base, compound = compound)
-    def set_ident (self, ident):
+        Node.__init__(self,  val=val, base=base, compound=compound)
+
+    def set_ident(self, ident):
         if self.compound:
-            self.val.set_ident (ident)
-    def to_str (self, ctx):
+            self.val.set_ident(ident)
+
+    def to_str(self, ctx):
         if self.base:
             return 'rpchelp.r_' + self.val
         else:
             if self.compound:
-                return self.val.to_str (ctx)
+                return self.val.to_str(ctx)
             return self.val
 
+
 class Enum (Node):
-    def __init__ (self, body):
-        Node.__init__ (self,  body=body)
-    def to_str (self, ctx):
-        return self.body.to_str (ctx)
+    def __init__(self, body):
+        Node.__init__(self,  body=body)
+
+    def to_str(self, ctx):
+        return self.body.to_str(ctx)
 
 
 class EnumList(NodeList):
     sep = ''
-    def to_str (self, ctx):
-        NodeList.to_str (self, ctx) # call for side effect of deferring defs.
+
+    def to_str(self, ctx):
+        NodeList.to_str(self, ctx)  # call for side effect of deferring defs.
         return 'rpchelp.r_int'
 
+
 class EnumClause (Node):
-    def __init__ (self, ident, val):
-        Node.__init__ (self,  ident = ident, val=val)
-    def to_str (self, ctx):
-        ctx.defer ('%s = %s' % (self.ident, self.val))
+    def __init__(self, ident, val):
+        Node.__init__(self,  ident=ident, val=val)
+
+    def to_str(self, ctx):
+        ctx.defer('%s = %s' % (self.ident, self.val))
         return ''
-                      
+
+
 class Struct (Node):
-    def __init__ (self, body):
-        body.name = '_unnamed' 
-        Node.__init__ (self,  body=body)
-    def set_ident (self, ident):
+    def __init__(self, body):
+        body.name = '_unnamed'
+        Node.__init__(self,  body=body)
+
+    def set_ident(self, ident):
         self.body.name = ident
-    def to_str (self, ctx):
-        return self.body.to_str (ctx)
+
+    def to_str(self, ctx):
+        return self.body.to_str(ctx)
+
 
 class StructList(NodeList):
-    def to_str (self, ctx):
+    def to_str(self, ctx):
         l = []
         l_count = 0
         l_index = None
-        for (decl,i) in zip(self.children, range (0, len (self.children))):
-            elt = "('%s',%s)" % (decl.ident, decl.to_str (ctx))
-            l.append (elt)
-            if (self.name <> '_unnamed' and isinstance (decl, OptData)
-                and decl.type_spec.val == self.name):
+        for (decl, i) in zip(self.children, range(0, len(self.children))):
+            elt = "('%s',%s)" % (decl.ident, decl.to_str(ctx))
+            l.append(elt)
+            if (self.name <> '_unnamed' and isinstance(decl, OptData)
+                    and decl.type_spec.val == self.name):
                 l_count += 1
                 l_index = i
-        members_str = ",".join (l)
+        members_str = ",".join(l)
         if l_count == 1:
-            return "rpchelp.linked_list ('%s', %d, [%s])" % (self.name,i,
+            return "rpchelp.linked_list ('%s', %d, [%s])" % (self.name, i,
                                                              members_str)
-        else: # either a flat struct or a tree or something more complex
+        else:  # either a flat struct or a tree or something more complex
             return "rpchelp.struct ('%s', [%s])" % (self.name, members_str)
-        return 
+        return
+
 
 class Union (Node):
-    def __init__ (self, body):
+    def __init__(self, body):
         body.name = 'unnamed'
-        Node.__init__ (self,  body=body)
-    def set_ident (self, ident):
+        Node.__init__(self,  body=body)
+
+    def set_ident(self, ident):
         self.body.name = ident
 
-    def to_str (self, ctx):
-        return self.body.to_str (ctx)
+    def to_str(self, ctx):
+        return self.body.to_str(ctx)
 
 
-class UnionList(NodeListComma): pass
+class UnionList(NodeListComma):
+    pass
+
 
 class UnionBody(Node):
-    def __init__ (self, sw_decl, body):
-        Node.__init__ (self,  sw_decl = sw_decl,
-                       body=body)
-    def to_str (self, ctx):
+    def __init__(self, sw_decl, body):
+        Node.__init__(self,  sw_decl=sw_decl,
+                      body=body)
+
+    def to_str(self, ctx):
         return "rpchelp.union ('%s', %s, '%s', {%s})" % (
-            self.name, 
-            self.sw_decl.typ.to_str (ctx),
+            self.name,
+            self.sw_decl.typ.to_str(ctx),
             self.sw_decl.ident,
-            self.body.to_str (ctx))
+            self.body.to_str(ctx))
+
 
 class UnionElt (Node):
-    def __init__ (self, val, decl):
-        Node.__init__ (self,  val=val, decl=decl)
-    def to_str (self, ctx):
-        typestr = self.decl.to_str (ctx)
+    def __init__(self, val, decl):
+        Node.__init__(self,  val=val, decl=decl)
+
+    def to_str(self, ctx):
+        typestr = self.decl.to_str(ctx)
         return "%s : %s" % (self.val, typestr)
     # We ignore self.decl.ident.  Not needed for current union
     # implementation, because we can assign the data to '_data',
     # because the type goes with the object bound to '_data',
     # not the declaration.
 
+
 class UnionDefElt (UnionElt):
-    def __init__ (self, decl):
-        Node.__init__ (self,  val = 'None', decl=decl)
+    def __init__(self, decl):
+        Node.__init__(self,  val='None', decl=decl)
 
-class VersionList (NodeList): pass
 
-class ProcedureList (NodeListComma): pass
+class VersionList (NodeList):
+    pass
+
+
+class ProcedureList (NodeListComma):
+    pass
+
 
 class TypeSpecList (NodeList):
     sep = ','
 
+
 class Const (Node):
-    def __init__ (self, ident, val):
-        Node.__init__ (self,  ident=ident, val=val)
-    def to_str (self, ctx):
+    def __init__(self, ident, val):
+        Node.__init__(self,  ident=ident, val=val)
+
+    def to_str(self, ctx):
         return '%s = %s' % (self.ident, self.val)
 
 
 class TypeDef (Node):
-    def __init__ (self, decl):
-        Node.__init__ (self,  decl=decl)
-    def to_str (self, ctx):
+    def __init__(self, decl):
+        Node.__init__(self,  decl=decl)
+
+    def to_str(self, ctx):
         if self.decl.ident == None:
             return '# "typedef void;" encountered'
         # a legit construction according to my reading of the grammar, but not
         # semantically useful.
-        typestr = self.decl.to_str (ctx)
+        typestr = self.decl.to_str(ctx)
         return '%s = %s' % (self.decl.ident, typestr)
 
+
 class TypeDefCompound (Node):
-    def __init__ (self, ident, typ, body):
+    def __init__(self, ident, typ, body):
         body.name = ident
-        Node.__init__ (self,  ident=ident, typ=typ,
-                       body = body)
-    def to_str (self, ctx):
-        return ('%s = %s' % (self.ident, self.body.to_str (ctx)))
+        Node.__init__(self,  ident=ident, typ=typ,
+                      body=body)
+
+    def to_str(self, ctx):
+        return ('%s = %s' % (self.ident, self.body.to_str(ctx)))
+
 
 class Program (Node):
-    def __init__ (self, ident, versions, program_id):
-        Node.__init__ (self, ident=ident,
-                       versions = versions, program_id = program_id)
-    def str_one_vers (self, ctx, vers):
+    def __init__(self, ident, versions, program_id):
+        Node.__init__(self, ident=ident,
+                      versions=versions, program_id=program_id)
+
+    def str_one_vers(self, ctx, vers):
         class_decl = 'class %s_%s(rpchelp.Server):' % (self.ident,
                                                        vers.version_id)
         prog = 'prog = %s' % (self.program_id,)
-        vers_str = 'vers = %s'  % (vers.version_id,)
-        proc_list = [p.to_str (ctx) for p in vers.proc_defs.children]
-        return "\n\t".join ([class_decl, prog, vers_str, 'procs = {' + 
-                            ",\n\t".join (proc_list)]) + '}\n'
-    def to_str (self, ctx):
-        return "\n".join (
-            [self.str_one_vers (ctx, vers) for vers in self.versions.children])
+        vers_str = 'vers = %s' % (vers.version_id,)
+        proc_list = [p.to_str(ctx) for p in vers.proc_defs.children]
+        return "\n\t".join([class_decl, prog, vers_str, 'procs = {' +
+                            ",\n\t".join(proc_list)]) + '}\n'
 
-        
+    def to_str(self, ctx):
+        return "\n".join(
+            [self.str_one_vers(ctx, vers) for vers in self.versions.children])
+
+
 class Version (Node):
-    def __init__ (self, ident, proc_defs, version_id):
-        Node.__init__ (self,  ident=ident,
-                       proc_defs = proc_defs, version_id = version_id)
+    def __init__(self, ident, proc_defs, version_id):
+        Node.__init__(self,  ident=ident,
+                      proc_defs=proc_defs, version_id=version_id)
+
 
 class Procedure (Node):
-    def __init__ (self, ident, ret_type, parm_list, proc_id):
-        Node.__init__ (self, ident=ident,
-                       ret_type = ret_type, parm_list = parm_list,
-                       proc_id = proc_id)
-    def to_str (self, ctx):
-        return "%s : rpchelp.Proc ('%s', %s, [%s])" % (
-            self.proc_id, self.ident, self.ret_type.to_str (ctx),
-            self.parm_list.to_str (ctx))
+    def __init__(self, ident, ret_type, parm_list, proc_id):
+        Node.__init__(self, ident=ident,
+                      ret_type=ret_type, parm_list=parm_list,
+                      proc_id=proc_id)
 
-def p_specification_1 (t):
+    def to_str(self, ctx):
+        return "%s : rpchelp.Proc ('%s', %s, [%s])" % (
+            self.proc_id, self.ident, self.ret_type.to_str(ctx),
+            self.parm_list.to_str(ctx))
+
+
+def p_specification_1(t):
     """specification : definition specification
     | program_def specification"""
-    t[0] = Specification (t[1], t[2])
+    t[0] = Specification(t[1], t[2])
 
-def p_specification_2 (t):
+
+def p_specification_2(t):
     """specification : definition
     | program_def"""
-    t[0] = Specification (t[1])
+    t[0] = Specification(t[1])
+
 
 def p_decl_1(t):
     """declaration : type_specifier IDENT"""
-    t[0] = SimpleType (t[1], t[2])
+    t[0] = SimpleType(t[1], t[2])
+
 
 def p_decl_2(t):
     """declaration : type_specifier IDENT LBRACK value RBRACK"""
-    t[0] = ArrType (t[1], t[2], ArrType.fixed, t[4])
+    t[0] = ArrType(t[1], t[2], ArrType.fixed, t[4])
+
 
 def p_decl_3(t):
     """declaration : type_specifier IDENT LANGLE value RANGLE"""
-    t[0] = ArrType (t[1], t[2], ArrType.var, t[4])
+    t[0] = ArrType(t[1], t[2], ArrType.var, t[4])
+
 
 def p_decl_4(t):
     """declaration : type_specifier IDENT LANGLE RANGLE"""
-    t[0] = ArrType (t[1], t[2], ArrType.var)
+    t[0] = ArrType(t[1], t[2], ArrType.var)
+
 
 def p_decl_5(t):
-    """declaration : OPAQUE IDENT LBRACK value RBRACK""" # fixed opaque
-    t[0] = ArrType ('opaque', t[2], ArrType.fixed, t[4])
-    
+    """declaration : OPAQUE IDENT LBRACK value RBRACK"""  # fixed opaque
+    t[0] = ArrType('opaque', t[2], ArrType.fixed, t[4])
+
+
 def p_decl_6(t):
     """declaration : OPAQUE IDENT LANGLE value RANGLE
-    | STRING IDENT LANGLE value RANGLE""" # var-len opaque/string
-    t[0] = ArrType (t[1], t[2], ArrType.var, t[4])
+    | STRING IDENT LANGLE value RANGLE"""  # var-len opaque/string
+    t[0] = ArrType(t[1], t[2], ArrType.var, t[4])
+
 
 def p_decl_7(t):
     """declaration : OPAQUE IDENT LANGLE RANGLE
-    | STRING IDENT LANGLE RANGLE""" # var-len opaque/string
-    t[0] = ArrType (t[1], t[2], ArrType.var)
+    | STRING IDENT LANGLE RANGLE"""  # var-len opaque/string
+    t[0] = ArrType(t[1], t[2], ArrType.var)
 
-def p_decl_8(t): # optional data
+
+def p_decl_8(t):  # optional data
     """declaration : type_specifier STAR IDENT"""
-    t[0] = OptData (t[1],t[3])
+    t[0] = OptData(t[1], t[3])
 
-def p_decl_9 (t):
+
+def p_decl_9(t):
     """declaration : void"""
-    t[0] = SimpleType (t[1], None)
+    t[0] = SimpleType(t[1], None)
 
-def p_void (t):
+
+def p_void(t):
     """void : VOID"""
-    t[0] = TypeSpec (t[1], unsigned = 0, base = 1)
-    
-def p_value (t):
+    t[0] = TypeSpec(t[1], unsigned=0, base=1)
+
+
+def p_value(t):
     """value : CONSTVAL
     | IDENT"""
     t[0] = t[1]
 
-# XXX some idl uses "unsigned" by itself (= unsigned int).  
+# XXX some idl uses "unsigned" by itself (= unsigned int).
 # Should revise grammar to allow 1 or more TYPE, sort out semantics
 # later
-def p_type_spec_1 (t):
+
+
+def p_type_spec_1(t):
     """type_specifier : UNSIGNED TYPE"""
-    t[0] = TypeSpec (t[2], unsigned = 1, base = 1)
+    t[0] = TypeSpec(t[2], unsigned=1, base=1)
 
-def p_type_spec_2 (t):
+
+def p_type_spec_2(t):
     """type_specifier : TYPE"""
-    t[0] = TypeSpec (t[1], unsigned = 0, base = 1)
+    t[0] = TypeSpec(t[1], unsigned=0, base=1)
 
-def p_type_spec_3 (t):
+
+def p_type_spec_3(t):
     """type_specifier :  enum_spec 
     | struct_spec 
     | union_spec"""
-    t[0] = TypeSpec (t[1], unsigned = 0, base = 0, compound = 1)
-    
-def p_type_spec_4 (t):
+    t[0] = TypeSpec(t[1], unsigned=0, base=0, compound=1)
+
+
+def p_type_spec_4(t):
     """type_specifier : IDENT"""
-    t[0] = TypeSpec (t[1], unsigned = 0, base = 0)
+    t[0] = TypeSpec(t[1], unsigned=0, base=0)
 
 
-def p_enum (t):
+def p_enum(t):
     """enum_spec : ENUM enum_body"""
-    t[0] = Enum (t[2])
+    t[0] = Enum(t[2])
+
 
 def p_enum_body(t):
     """enum_body : LCBRACK enum_body_aux RCBRACK"""
     t[0] = t[2]
 
-def p_enum_body_aux_1 (t):
-    """enum_body_aux : IDENT EQ value COMMA enum_body_aux"""
-    t[0] = EnumList (EnumClause (t[1], t[3]), t[5])
-    
-def p_enum_body_aux_2 (t):
-    """enum_body_aux : IDENT EQ value"""
-    t[0] = EnumList (EnumClause (t[1], t[3]))
 
-def p_struct_spec (t):
+def p_enum_body_aux_1(t):
+    """enum_body_aux : IDENT EQ value COMMA enum_body_aux"""
+    t[0] = EnumList(EnumClause(t[1], t[3]), t[5])
+
+
+def p_enum_body_aux_2(t):
+    """enum_body_aux : IDENT EQ value"""
+    t[0] = EnumList(EnumClause(t[1], t[3]))
+
+
+def p_struct_spec(t):
     """struct_spec : STRUCT struct_body"""
-    t[0] = Struct (t[2])
+    t[0] = Struct(t[2])
+
 
 def p_struct_body(t):
     """struct_body : LCBRACK struct_body_aux RCBRACK"""
     t[0] = t[2]
 
-def p_struct_body_aux_1 (t):
-    """struct_body_aux : declaration SEMICOLON struct_body_aux"""
-    t[0] = StructList (t[1], t[3])
 
-def p_struct_body_aux_2 (t):
+def p_struct_body_aux_1(t):
+    """struct_body_aux : declaration SEMICOLON struct_body_aux"""
+    t[0] = StructList(t[1], t[3])
+
+
+def p_struct_body_aux_2(t):
     """struct_body_aux : declaration SEMICOLON"""
-    t[0] = StructList (t[1])
-    
-def p_union (t):
+    t[0] = StructList(t[1])
+
+
+def p_union(t):
     "union_spec : UNION union_body"
-    t[0] = Union (t[2])
+    t[0] = Union(t[2])
+
 
 def p_union_body(t):
     """union_body : SWITCH LPAREN declaration RPAREN LCBRACK union_body_aux RCBRACK"""
-    t[0] = UnionBody (t[3], t[6])
+    t[0] = UnionBody(t[3], t[6])
 
-def p_union_body_aux_1 (t):
+
+def p_union_body_aux_1(t):
     "union_body_aux : union_case"
-    t[0] = UnionList (t[1])
+    t[0] = UnionList(t[1])
 
-def p_union_body_aux_2 (t):
+
+def p_union_body_aux_2(t):
     "union_body_aux : union_case union_body_aux"
-    t[0] = UnionList (t[1], t[2])
+    t[0] = UnionList(t[1], t[2])
 
-def p_union_case_1 (t):
+
+def p_union_case_1(t):
     "union_case : CASE value COLON declaration SEMICOLON"
-    t[0] = UnionElt (t[2], t[4])
-    
+    t[0] = UnionElt(t[2], t[4])
 
-def p_union_case_2 (t):
+
+def p_union_case_2(t):
     "union_case : DEFAULT COLON declaration SEMICOLON"
-    t[0] = UnionDefElt (t[3])
+    t[0] = UnionDefElt(t[3])
+
 
 def p_constant_def(t):
     "constant_def : CONST IDENT EQ CONSTVAL SEMICOLON"
-    t[0] = Const (t[2], t[4])
+    t[0] = Const(t[2], t[4])
+
 
 def p_type_def_1(t):
     "type_def : TYPEDEF declaration SEMICOLON"
-    t[0] = TypeDef (t[2])
+    t[0] = TypeDef(t[2])
+
 
 def p_type_def_2(t):
     """type_def : ENUM IDENT enum_body SEMICOLON  
     | STRUCT IDENT struct_body SEMICOLON 
     | UNION IDENT union_body SEMICOLON"""
-    t[0] = TypeDefCompound (t[2], t[1], t[3])
+    t[0] = TypeDefCompound(t[2], t[1], t[3])
 
-def p_definition (t):
+
+def p_definition(t):
     """definition : type_def 
     | constant_def"""
     t[0] = t[1]
 
-def p_program_def (t):
+
+def p_program_def(t):
     "program_def : PROGRAM IDENT LCBRACK version_defs RCBRACK EQ CONSTVAL SEMICOLON"
-    t[0] = Program (t[2], t[4], t[7])
+    t[0] = Program(t[2], t[4], t[7])
 
-def p_version_defs_1 (t):
+
+def p_version_defs_1(t):
     "version_defs : version_def version_defs"
-    t[0] = VersionList (t[1], t[2])
+    t[0] = VersionList(t[1], t[2])
 
-def p_version_defs_2 (t):
+
+def p_version_defs_2(t):
     "version_defs : version_def"
-    t[0] = VersionList (t[1])
+    t[0] = VersionList(t[1])
 
-def p_version_def (t):
+
+def p_version_def(t):
     "version_def : VERSION IDENT LCBRACK procedure_defs RCBRACK EQ CONSTVAL SEMICOLON"
-    t[0] = Version (t[2], t[4], t[7])
+    t[0] = Version(t[2], t[4], t[7])
 
-def p_procedure_defs_1 (t):
+
+def p_procedure_defs_1(t):
     "procedure_defs : procedure_def procedure_defs"
-    t[0] = ProcedureList (t[1], t[2])
-    
-def p_procedure_defs_2 (t):
+    t[0] = ProcedureList(t[1], t[2])
+
+
+def p_procedure_defs_2(t):
     "procedure_defs : procedure_def"
-    t[0] = ProcedureList (t[1])
+    t[0] = ProcedureList(t[1])
 
-def p_procedure_def (t):
+
+def p_procedure_def(t):
     "procedure_def : arg_type_specifier IDENT LPAREN type_spec_list RPAREN EQ CONSTVAL SEMICOLON"
-    t[0] = Procedure (t[2], t[1], t[4], t[7])
+    t[0] = Procedure(t[2], t[1], t[4], t[7])
 
-def p_type_spec_list_1 (t):
+
+def p_type_spec_list_1(t):
     "type_spec_list : arg_type_specifier COMMA type_spec_list"
-    t[0] = TypeSpecList (t[1], t[3])
-    
-def p_type_spec_list_2 (t):
-    "type_spec_list : arg_type_specifier"
-    t[0] = TypeSpecList (t[1])
+    t[0] = TypeSpecList(t[1], t[3])
 
-def p_arg_type_specifier_1 (t):
+
+def p_type_spec_list_2(t):
+    "type_spec_list : arg_type_specifier"
+    t[0] = TypeSpecList(t[1])
+
+
+def p_arg_type_specifier_1(t):
     """arg_type_specifier : type_specifier
     | void"""
     # void isn't mentioned as a possibility in the RFC183[12] grammar,
@@ -641,47 +747,52 @@ def p_arg_type_specifier_1 (t):
     # if void appears in an arglist, it must be the only elt. XXX
     t[0] = t[1]
 
-def p_error(t):
-    raise ParseError (t)
 
-import yacc
-yacc.yacc ()
-                 
-def testlex (s, fn):
-    lexer.input (s)
+def p_error(t):
+    raise ParseError(t)
+
+
+yacc.yacc()
+
+
+def testlex(s, fn):
+    lexer.input(s)
     while 1:
-        token = lexer.token ()
+        token = lexer.token()
         if not token:
             break
         print token
 
-def print_ast (ast, level = 0):
+
+def print_ast(ast, level=0):
     print " " * 4 * level
-    if isinstance (ast, Node):
-        print ast.__class__.__name__, 
+    if isinstance(ast, Node):
+        print ast.__class__.__name__,
         if ast.val <> None:
-            print_ast (ast.val)
+            print_ast(ast.val)
         if ast.children <> None:
             for c in ast.children:
-                print_ast (c, level + 1)
-    else: print ast
-    
-def testyacc (s, fn):
-    ast = yacc.parse (s)
-    print_ast (ast)
+                print_ast(c, level + 1)
+    else:
+        print ast
 
-import sys
 
-def test (s, fn):
-    ast = yacc.parse (s)
-    ctx = Ctx ()
+def testyacc(s, fn):
+    ast = yacc.parse(s)
+    print_ast(ast)
+
+
+def test(s, fn):
+    ast = yacc.parse(s)
+    ctx = Ctx()
     print "### Auto-generated at %s from %s" % (
         time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()),
         fn)
     print "import rpchelp"
-    tmp = ast.to_str (ctx)
-    print ctx.finish ()
+    tmp = ast.to_str(ctx)
+    print ctx.finish()
     print tmp
+
 
 if __name__ == '__main__':
     testfn = test
@@ -689,6 +800,6 @@ if __name__ == '__main__':
 #    testfn = testlex
 
     for fn in sys.argv[1:]:
-        f = open (fn)
-        s = f.read ()
-        testfn (s, fn)
+        f = open(fn)
+        s = f.read()
+        testfn(s, fn)
