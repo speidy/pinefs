@@ -104,7 +104,7 @@ class FileSystem:
         return self._fils.get (fh, None)
     def _add_fil (self, dir_fh, name, new_fh):
         dir_fil = self.get_fil (dir_fh)
-        assert (dir_fil <> None)
+        assert (dir_fil != None)
         dir = dir_fil.get_dir ()
         if dir.has_key (name):
             raise fsbase.NFSError (rfc1094.NFSERR_EXIST)
@@ -112,7 +112,7 @@ class FileSystem:
     def create_fil (self, dir_fh, name, **kw):
         fil = FileObj (**kw)
         fh = self._register (fil)
-        if dir_fh <> None: # if dir_fh == None, we're creating root directory
+        if dir_fh != None: # if dir_fh == None, we're creating root directory
             self._add_fil (dir_fh, name, fh)
         return fh, fil
     def rename (self, old_dir, old_name, new_dir, new_name):
@@ -132,7 +132,7 @@ class FileSystem:
         fil = self.get_fil (fh)
 
         if fil.type == rfc1094.NFDIR:
-            if fil.dir <> {}:
+            if fil.dir != {}:
                 raise fsbase.NFSError (rfc1094.NFSERR_NOTEMPTY)
         del self._fils [fh]
         del dir_fil.get_dir() [name]

@@ -126,7 +126,7 @@ class NfsSrv (rfc1094.NFS_PROGRAM_2, HostAccessControl):
         rv = rfc1094.attrstat()
         try:
             fil = self.fs.get_fil(sattrargs.file)
-            if fil <> None:
+            if fil != None:
                 fil.update(sattrargs.attributes)
                 rv.status = rfc1094.NFS_OK
                 rv._data = fil
@@ -149,12 +149,12 @@ class NfsSrv (rfc1094.NFS_PROGRAM_2, HostAccessControl):
     def NFSPROC_LOOKUP(self, diropargs):
         dir_fil = self.fs.get_fil(diropargs.dir)
         diropres = rfc1094.diropres()
-        if dir_fil <> None:
-            if dir_fil.type <> rfc1094.NFDIR:
+        if dir_fil != None:
+            if dir_fil.type != rfc1094.NFDIR:
                 diropres.status = rfc1094.NFSERR_NOTDIR
                 return diropres
             fh = dir_fil.get_dir().get(diropargs.name, None)
-            if fh <> None:
+            if fh != None:
                 attr = self.fs.get_fil(fh)
                 diropres.status = rfc1094.NFS_OK
                 diropres._data = diropres.diropok(
@@ -266,7 +266,7 @@ class NfsSrv (rfc1094.NFS_PROGRAM_2, HostAccessControl):
             if d_fil == None:
                 res.status = rfc1094.NFSERR_STALE
                 return res
-            if d_fil.type <> rfc1094.NFDIR:
+            if d_fil.type != rfc1094.NFDIR:
                 res.status = rfrc1094.NFSERR_NOTDIR
                 return res
             d = d_fil.get_dir()

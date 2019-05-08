@@ -122,7 +122,7 @@ class FileObj(fsbase.FileObj):
         obj = self.parent_dict[self.key]
 
         dict = get_dict(obj)
-        if dict <> None:
+        if dict != None:
             self.set_dict(dict)
         else:
             self.type = rfc1094.NFREG
@@ -192,9 +192,9 @@ class FileObj(fsbase.FileObj):
         GETATTR, and the NFS client can reread if necesary.This is
         comparatively heavyweight, and maybe there should be a flag to
         turn it off."""
-        if self.type <> rfc1094.NFDIR:
+        if self.type != rfc1094.NFDIR:
             new_data = self.get_data()
-            if new_data <> self.data:
+            if new_data != self.data:
                 self.mtime = fsbase.mk_now()
                 self.data = new_data
                 self.set_size()
@@ -216,7 +216,7 @@ class FileObj(fsbase.FileObj):
         del self.dir[key]
 
     def set_dir(self, key, fh):
-        if fh <> None:
+        if fh != None:
             self.dir[key] = fh
         else:
             del self.dir[key]
@@ -230,7 +230,7 @@ class FileObj(fsbase.FileObj):
         # just save old_dict and compare .items (), since we're doing
         # the moral equivalent for files.
 
-        if self.dir == None or len(self.dir) <> len(self.dict):
+        if self.dir == None or len(self.dir) != len(self.dict):
             self.refresh_dir()
         return self.dir
 
@@ -238,8 +238,8 @@ class FileObj(fsbase.FileObj):
         # exclude _fils, _objs to avoid apps traversing entire directory tree
         # from looping forever
 
-        if (self.dict <> self.fs._fils and
-                self.dict <> self.fs._objs):
+        if (self.dict != self.fs._fils and
+                self.dict != self.fs._objs):
             old_dir = self.dir
             self.dir = {}
 
@@ -252,7 +252,7 @@ class FileObj(fsbase.FileObj):
 
             for (k, v) in self.dict.items():
                 if isinstance(k, type('')):
-                    if k.find('/') <> -1:
+                    if k.find('/') != -1:
                         continue
                 fh = old_dir.get(k, None)
                 if fh == None:
@@ -297,7 +297,7 @@ class FileSystem:
     def find_or_create(self, dict, key):
         py_obj = dict[key]
         d = get_dict(py_obj)
-        if d <> None:
+        if d != None:
             tup = self._objs.get(id(py_obj))
         else:
             tup = None
@@ -307,7 +307,7 @@ class FileSystem:
             if trace_fh:
                 print "creating fh %s key %s" % (fh, str(key))
             self._fils[fh] = fattr
-            if d <> None:
+            if d != None:
                 self._objs[id(py_obj)] = (py_obj, fh)
             return fh
         else:
@@ -319,7 +319,7 @@ class FileSystem:
 
     def get_fil(self, fh):
         f = self._fils.get(fh, None)
-        if f <> None:
+        if f != None:
             f.check_changed()
             f.atime = fsbase.mk_now()
         return f
@@ -353,7 +353,7 @@ class FileSystem:
             old_fil = self.get_fil(old_fh)
             py_obj = old_fil.parent_dict[old_fil.key]
             if old_fil.type == rfc1094.NFDIR:
-                if old_fil.dict <> {}:
+                if old_fil.dict != {}:
                     raise fsbase.NFSError(rfc1094.NFSERR_NOTEMPTY)
             del dir_fil[name]
         except TypeError:
@@ -366,5 +366,5 @@ class FileSystem:
         del self._fils[old_fh]
 
         d = get_dict(py_obj)
-        if d <> None:
+        if d != None:
             del self._objs[id(py_obj)]

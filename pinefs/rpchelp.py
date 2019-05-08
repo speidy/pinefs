@@ -63,7 +63,7 @@ class arr:
         assert (not (var_fixed == fixed and length == None))
 
     def check_pack_len(self, v):
-        if self.var_fixed <> fixed and self.length <> None:
+        if self.var_fixed != fixed and self.length != None:
             # if it's a fixed type, xdrlib checks
             val_len = len(v)
             if val_len > self.length:
@@ -256,9 +256,9 @@ class linked_list(struct_union_impl):
         self.elt_list = elt_list
 
         self.link_index = link_index
-        member_names = [elt[0] for elt in self.elt_list if elt[0] <> None]
+        member_names = [elt[0] for elt in self.elt_list if elt[0] != None]
         self.mk_val_class(member_names, [elt[1] for elt in self.elt_list
-                                         if elt[1] <> None])
+                                         if elt[1] != None])
 
     def pack(self, p, val_list, ind=0):
         val = val_list[ind]  # note: wrong to pass 0-len list!

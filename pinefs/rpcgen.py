@@ -365,7 +365,7 @@ class StructList(NodeList):
         for (decl, i) in zip(self.children, range(0, len(self.children))):
             elt = "('%s',%s)" % (decl.ident, decl.to_str(ctx))
             l.append(elt)
-            if (self.name <> '_unnamed' and isinstance(decl, OptData)
+            if (self.name != '_unnamed' and isinstance(decl, OptData)
                     and decl.type_spec.val == self.name):
                 l_count += 1
                 l_index = i
@@ -768,9 +768,9 @@ def print_ast(ast, level=0):
     print " " * 4 * level
     if isinstance(ast, Node):
         print ast.__class__.__name__,
-        if ast.val <> None:
+        if ast.val != None:
             print_ast(ast.val)
-        if ast.children <> None:
+        if ast.children != None:
             for c in ast.children:
                 print_ast(c, level + 1)
     else:
